@@ -40,7 +40,7 @@ My implementation followed the guidelines provided in the walthrough video:
 
 The smooth trajectories were already covered by these points, the next step was to define the set of behaviours and transitions for a Finite State Machine: Keep Lane (KL), Change Lane Left (CLL) and Change Lane Right (CLR) (If a lane change is not possible, then the ego speed is reduced), depending on the lane the ego vehicle is:
 
-```
+```C++
 // Finite State Machine 
 switch (lane)
 {
