@@ -1,4 +1,4 @@
-# ** Path Planning** 
+#  Path Planning
 
 ---
 
