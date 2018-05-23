@@ -98,7 +98,7 @@ else if (ref_vel < 49.5)
 
 The main idea for this design is to check if there are vehicles ahead of the ego vehicle and if there is enough room for a safe lane change in the adjacent lanes, reducing the safety distance will result in more audacious driving and incrementing it results in a more moderate behavior. Sensor fusion data is used to predict in a very simple fashion the position of surrounding vehicles and determine whether or not there is room for lane changes. The logic for setting the flags for the FSM is covered in this snippet:
 
-```
+```C++
 // Adapted from Walkthrough part 2: Sensor Fusion
 if (prev_size > 0) 
 {
