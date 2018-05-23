@@ -41,115 +41,115 @@ My implementation followed the guidelines provided in the walthrough video:
 The smooth trajectories were already covered by these points, the next step was to define the set of behaviours and transitions for a Finite State Machine: Keep Lane (KL), Change Lane Left (CLL) and Change Lane Right (CLR) (If a lane change is not possible, then the ego speed is reduced), depending on the lane the ego vehicle is:
 
 ```
-			// Finite State Machine 
-			switch (lane)
-			{
-				case 0: // Ego vehicle in leftmost lane
-					if (not_enough_gap_right) //KL
-					{
-						lane = 0; 
-					}
-					else if ((!not_enough_gap_right ) && (too_close)) //CLR
-					{
-						lane = 1;
-					}
-					break;
+// Finite State Machine 
+switch (lane)
+{
+	case 0: // Ego vehicle in leftmost lane
+		if (not_enough_gap_right) //KL
+		{
+			lane = 0; 
+		}
+		else if ((!not_enough_gap_right ) && (too_close)) //CLR
+		{
+			lane = 1;
+		}
+		break;
 
-				case 1: // Ego vehicle in center lane			
-					if ( ((not_enough_gap_left) && (not_enough_gap_right) ) ) //Keep Lane
-					{
-						lane = 1; 
-					}
-					else if (!not_enough_gap_left && too_close) //CLL
-					{
-						lane = 0;
-					}
-					else if (!not_enough_gap_right && too_close)//CLR
-					{
-						lane = 2;
-					}
-					break;
+	case 1: // Ego vehicle in center lane			
+		if ( ((not_enough_gap_left) && (not_enough_gap_right) ) ) //Keep Lane
+		{
+			lane = 1; 
+		}
+		else if (!not_enough_gap_left && too_close) //CLL
+		{
+			lane = 0;
+		}
+		else if (!not_enough_gap_right && too_close)//CLR
+		{
+			lane = 2;
+		}
+		break;
 
-				case 2: // Ego vehicle in rightmost lane
-					if (not_enough_gap_left) //KL
-					{
-						lane = 2;
-					}
-					else if ((!not_enough_gap_left) && (too_close)) //CLL
-					{
-						lane = 1;
-					}
-					break;
+	case 2: // Ego vehicle in rightmost lane
+		if (not_enough_gap_left) //KL
+		{
+			lane = 2;
+		}
+		else if ((!not_enough_gap_left) && (too_close)) //CLL
+		{
+			lane = 1;
+		}
+		break;
 
-				default:
-					break;
-			
-			}
+	default:
+		break;
 
-			if (too_close)
-			{
-				ref_vel -= 0.224;
-			}
-			else if (ref_vel < 49.5) 
-			{
-				ref_vel += 0.224;		
-			}
+}
+
+if (too_close)
+{
+	ref_vel -= 0.224;
+}
+else if (ref_vel < 49.5) 
+{
+	ref_vel += 0.224;		
+}
 ```
 
 The main idea for this design is to check if there are vehicles ahead of the ego vehicle and if there is enough room for a safe lane change in the adjacent lanes, reducing the safety distance will result in more audacious driving and incrementing it results in a more moderate behavior. Sensor fusion data is used to predict in a very simple fashion the position of surrounding vehicles and determine whether or not there is room for lane changes. The logic for setting the flags for the FSM is covered in this snippet:
 
 ```
-			// Adapted from Walkthrough part 2: Sensor Fusion
-			if (prev_size > 0) 
+// Adapted from Walkthrough part 2: Sensor Fusion
+if (prev_size > 0) 
+{
+	car_s = end_path_s;
+}
+
+bool too_close = false;
+bool not_enough_gap_left = false;
+bool not_enough_gap_right = false;
+
+//check the position and speed of surrounding relevant vehicles to set FSM transition flags
+for (int i = 0; i < sensor_fusion.size(); i++)
+{
+	float d = sensor_fusion[i][6];
+	double vx = sensor_fusion[i][3];
+	double vy = sensor_fusion[i][4];
+	double check_speed = sqrt(vx*vx + vy*vy);
+	double check_car_s = sensor_fusion[i][5];
+
+	check_car_s += ((double)prev_size*0.02*check_speed); //prediction of s coordinate of [i] vehicle
+
+	if (d<(2 + 4 * lane + 2) && d>(2 + 4 * lane - 2)) // check for vehicles in ego lane
+	{
+		if ((check_car_s > car_s) && ((check_car_s - car_s) < 20))
+		{
+			too_close = true;					
+		}
+	}
+
+	if (lane>=1) 
+	{
+		if ((d<(2 + 4 * (lane - 1) + 2) && d>(2 + 4 * (lane - 1) - 2))) // check for vehicles in left lane
+		{
+			if (((check_car_s - car_s) >= -15) && ((check_car_s - car_s) <= 25))
 			{
-				car_s = end_path_s;
+				not_enough_gap_left = true;
 			}
+		}
+	}
 
-			bool too_close = false;
-			bool not_enough_gap_left = false;
-			bool not_enough_gap_right = false;
-
-			//check the position and speed of surrounding relevant vehicles to set FSM transition flags
-			for (int i = 0; i < sensor_fusion.size(); i++)
+	if (lane<=1)
+	{
+		if ((d<(2 + 4 * (lane + 1) + 2) && d>(2 + 4 * (lane + 1) - 2))) // check for vehicles in right lane
+		{
+			if (((check_car_s - car_s) >= -15) && ((check_car_s - car_s) <= 25))
 			{
-				float d = sensor_fusion[i][6];
-				double vx = sensor_fusion[i][3];
-				double vy = sensor_fusion[i][4];
-				double check_speed = sqrt(vx*vx + vy*vy);
-				double check_car_s = sensor_fusion[i][5];
-
-				check_car_s += ((double)prev_size*0.02*check_speed); //prediction of s coordinate of [i] vehicle
-
-				if (d<(2 + 4 * lane + 2) && d>(2 + 4 * lane - 2)) // check for vehicles in ego lane
-				{
-					if ((check_car_s > car_s) && ((check_car_s - car_s) < 20))
-					{
-						too_close = true;					
-					}
-				}
-
-				if (lane>=1) 
-				{
-					if ((d<(2 + 4 * (lane - 1) + 2) && d>(2 + 4 * (lane - 1) - 2))) // check for vehicles in left lane
-					{
-						if (((check_car_s - car_s) >= -15) && ((check_car_s - car_s) <= 25))
-						{
-							not_enough_gap_left = true;
-						}
-					}
-				}
-
-				if (lane<=1)
-				{
-					if ((d<(2 + 4 * (lane + 1) + 2) && d>(2 + 4 * (lane + 1) - 2))) // check for vehicles in right lane
-					{
-						if (((check_car_s - car_s) >= -15) && ((check_car_s - car_s) <= 25))
-						{
-							not_enough_gap_right = true;
-						}
-					}
-				}
+				not_enough_gap_right = true;
 			}
+		}
+	}
+}
 
 ```
 
